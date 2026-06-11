@@ -1,0 +1,15 @@
+.git
+.env
+frontend/node_modules
+frontend/dist
+backend/data/jobs
+indexes
+dataresource
+Log
+*.dmnd
+*.tar.gz
+*.zip
+*.fna
+*.fa
+*.fasta
+*.gbff

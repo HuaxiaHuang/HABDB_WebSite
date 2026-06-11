@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HABDB-Web-v2 正式工程实现报告</title>
+<style>
+  /* ========== CSS Reset & Base ========== */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #ffffff;
+    --text: #374151;
+    --text-secondary: #6b7280;
+    --border: #e5e7eb;
+    --accent: #2563eb;
+    --accent-light: #eff6ff;
+    --accent-hover: #1d4ed8;
+    --heading: #111827;
+    --code-bg: #1e293b;
+    --code-text: #e2e8f0;
+    --table-stripe: #f8fafc;
+    --blockquote-bg: #f0f7ff;
+    --blockquote-border: #2563eb;
+    --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --font-mono: "SF Mono", "Fira Code", "Cascadia Code", "Source Code Pro", "JetBrains Mono", Consolas, monospace;
+    --radius: 8px;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    color: var(--text);
+    background: #f5f6f8;
+    line-height: 1.75;
+    font-size: 15px;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* ========== Page Container ========== */
+  .page {
+    max-width: 820px;
+    margin: 40px auto;
+    background: var(--bg);
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 6px 20px rgba(0,0,0,0.04);
+    padding: 60px 70px;
+  }
+
+  @media (max-width: 860px) {
+    .page { margin: 0; border-radius: 0; padding: 32px 24px; }
+  }
+
+  /* ========== Metadata Header Card ========== */
+  .meta-card {
+    background: var(--blockquote-bg);
+    border-left: 4px solid var(--blockquote-border);
+    border-radius: 0 6px 6px 0;
+    padding: 16px 20px;
+    margin: 0 0 40px 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 24px;
+  }
+  .meta-card span { white-space: nowrap; }
+  .meta-card strong { color: var(--text); font-weight: 600; }
+
+  /* ========== Headings ========== */
+  h1 { font-size: 2em; font-weight: 700; margin: 0 0 8px 0; color: var(--heading); letter-spacing: -0.02em; }
+  h2 { font-size: 1.4em; font-weight: 700; margin: 40px 0 14px 0; color: var(--heading); padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.15em; font-weight: 700; margin: 28px 0 10px 0; color: var(--heading); }
+  h4 { font-size: 1.05em; font-weight: 700; margin: 20px 0 8px 0; color: var(--heading); }
+  h5, h6 { font-size: 1em; font-weight: 700; margin: 16px 0 6px 0; color: var(--heading); }
+
+  /* ========== TOC ========== */
+  .toc {
+    background: #fafbfc;
+    border-left: 5px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 24px 28px;
+    margin: 0 0 40px 0;
+  }
+  .toc .toc-title {
+    font-size: 1.1em;
+    font-weight: 700;
+    margin-bottom: 14px;
+    color: var(--heading);
+  }
+  .toc ul { list-style: none; padding: 0; margin: 0; }
+  .toc li { padding: 4px 0; }
+  .toc a {
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 0.92em;
+    display: inline-block;
+    padding: 2px 0;
+    transition: all 0.2s ease;
+  }
+  .toc a:hover { color: var(--accent-hover); text-decoration: underline; }
+  .toc ul ul { padding-left: 18px; }
+  .toc ul ul a { color: var(--text-secondary); font-size: 0.88em; }
+  .toc ul ul ul { padding-left: 16px; }
+
+  /* ========== Paragraphs & Inline ========== */
+  p { margin: 0 0 1.5rem 0; }
+  a { color: var(--accent); text-decoration: none; transition: all 0.2s ease; }
+  a:hover { color: var(--accent-hover); text-decoration: underline; }
+  strong { font-weight: 600; color: var(--heading); }
+  em { font-style: italic; }
+
+  code:not(pre code) {
+    background: #f0f0f0;
+    color: #d63384;
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    padding: 2px 6px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+
+  /* ========== Mac-Style Code Blocks ========== */
+  .code-block-wrapper {
+    margin: 20px 0;
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  }
+  .code-block-header {
+    background: #21252b;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .mac-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .mac-dot.red    { background: #ff5f56; }
+  .mac-dot.yellow { background: #ffbd2e; }
+  .mac-dot.green  { background: #27c93f; }
+  .code-block-header .file-label {
+    flex: 1;
+    text-align: center;
+    color: #5c6370;
+    font-size: 12px;
+    font-family: var(--font-mono);
+  }
+  pre {
+    background: var(--code-bg);
+    color: var(--code-text);
+    font-family: var(--font-mono);
+    font-size: 13.5px;
+    line-height: 1.65;
+    padding: 20px 24px;
+    margin: 0;
+    overflow-x: auto;
+    white-space: pre;
+    tab-size: 4;
+  }
+  pre code { background: transparent; color: inherit; padding: 0; font-size: inherit; }
+
+  /* ========== Tables (Zebra) ========== */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-size: 0.93em;
+  }
+  thead { background: #f1f5f9; }
+  th {
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 700;
+    border: 1px solid #ddd;
+    color: var(--heading);
+  }
+  td {
+    padding: 9px 14px;
+    border: 1px solid #ddd;
+    vertical-align: top;
+  }
+  tbody tr:nth-child(odd)  { background: #ffffff; }
+  tbody tr:nth-child(even) { background: #f9f9f9; }
+  tbody tr:hover { background: var(--accent-light); }
+  table code {
+    background: #f0f0f0;
+    color: #d63384;
+    font-family: var(--font-mono);
+    font-size: 0.88em;
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+
+  /* ========== Blockquotes ========== */
+  blockquote {
+    background: #f8fafc;
+    border-left: 4px solid #94a3b8;
+    margin: 20px 0;
+    padding: 14px 20px;
+    border-radius: 0 6px 6px 0;
+    color: #475569;
+    font-size: 0.95em;
+  }
+  blockquote p { margin: 0; }
+  blockquote.meta {
+    background: var(--blockquote-bg);
+    border-left-color: var(--blockquote-border);
+  }
+
+  /* ========== Lists ========== */
+  ul, ol { margin: 0 0 1.5rem 0; padding-left: 24px; }
+  li { padding: 4px 0; }
+  ul ul, ol ol, ul ol, ol ul { margin-bottom: 0; }
+
+  /* ========== Horizontal Rule ========== */
+  hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 32px 0;
+  }
+
+  /* ========== Images ========== */
+  img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 6px;
+    margin: 16px 0;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+  figure { margin: 20px 0; text-align: center; }
+  figcaption {
+    font-size: 0.85em;
+    color: var(--text-secondary);
+    margin-top: 8px;
+  }
+
+  /* ========== Print Styles ========== */
+  @media print {
+    body { background: #fff; }
+    .page { box-shadow: none; max-width: 100%; margin: 0; padding: 20px 30px; }
+    pre { white-space: pre-wrap; word-break: break-all; }
+    .code-block-header { background: #e0e4e8; }
+    .mac-dot.red { background: #ccc; }
+    .mac-dot.yellow { background: #ccc; }
+    .mac-dot.green { background: #ccc; }
+  }
+
+  /* ========== Utility ========== */
+  .back-to-top {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 40px;
+    height: 40px;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    font-size: 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    opacity: 0.8;
+    transition: opacity 0.2s;
+  }
+  .back-to-top:hover { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Metadata Header -->
+  <div class="meta-card">
+    
+    <span><strong>文件:</strong> HABDB-Web-v2_Formal_Engineering_Implementation_Report.md</span>
+    
+    <span><strong>路径:</strong> I:\论文\赤潮\文章\数据库文章\openclaw\codex\NAR\WebSite\HABDB-Web-v2\Log</span>
+    
+    <span><strong>生成时间:</strong> 2026-06-11 15:23</span>
+    
+  </div>
+
+  <!-- Title -->
+  <h1>HABDB-Web-v2 正式工程实现报告</h1>
+
+  <!-- Table of Contents -->
+  
+  <div class="toc">
+    <div class="toc-title">📑 目录</div>
+    <div class="toc">
+<ul>
+<li><a href="#habdb-web-v2">HABDB-Web-v2 正式工程实现报告</a><ul>
+<li><a href="#1">1. 核心结论</a></li>
+<li><a href="#2">2. 工程目录</a></li>
+<li><a href="#3">3. 命令设计</a></li>
+<li><a href="#4">4. 数据库设计</a></li>
+<li><a href="#5">5. 数据导入策略</a></li>
+<li><a href="#6">6. 序列检索实现状态</a></li>
+<li><a href="#7-18srrna">7. 18SrRNA 命名统一策略</a></li>
+<li><a href="#8">8. 验证状态</a></li>
+<li><a href="#9">9. 下一步建议</a></li>
+</ul>
+</li>
+</ul>
+</div>
+
+  </div>
+  
+
+  <!-- Rendered Content -->
+  <html><body><h2 id="habdb-web-v2">HABDB-Web-v2 正式工程实现报告<a class="toc-link" href="#habdb-web-v2" title="Permanent link">¶</a></h2>
+<p><strong>生成时间：</strong> 2026-06-11 15:23:05<br/>
+<strong>项目路径：</strong> <code>I:\论文\赤潮\文章\数据库文章\openclaw\codex\NAR\WebSite\HABDB-Web-v2</code><br/>
+<strong>目标：</strong> 在 v1 原型基础上构建可运行、可部署、可维护、尽量达到 NAR 正式投稿版要求的正式数据库网站工程。  </p>
+<h3 id="1">1. 核心结论<a class="toc-link" href="#1" title="Permanent link">¶</a></h3>
+<p>HABDB-Web-v2 已被构建为标准工程化项目，而不是临时 MVP。当前版本包含：</p>
+<ul>
+<li>FastAPI 后端服务；</li>
+<li>PostgreSQL 数据库 schema；</li>
+<li>Redis + RQ 异步任务队列；</li>
+<li>DIAMOND 真实检索任务路径，优先使用既有 <code>HABs_Func_db.dmnd</code>；</li>
+<li>BLASTN / Kraken2 的 18SrRNA job workflow、配置项与索引挂载路径；</li>
+<li>React + Vite 前端，视觉风格保持 v1 的科研数据库风格；</li>
+<li>Docker Compose 管理 db、redis、backend、worker、frontend；</li>
+<li>显式数据导入命令，不在普通 <code>docker compose up</code> 时反复扫描大型资源；</li>
+<li><code>Resource_Preparation_Checklist.md</code> 记录索引准备状态；</li>
+<li>全站用户可见命名统一为 <code>18SrRNA</code>。</li>
+</ul>
+<h3 id="2">2. 工程目录<a class="toc-link" href="#2" title="Permanent link">¶</a></h3>
+<div class="code-block-wrapper"><div class="code-block-header"><span class="mac-dot red"></span><span class="mac-dot yellow"></span><span class="mac-dot green"></span><span class="file-label">code</span></div><pre><code class="language-text">HABDB-Web-v2/
+  backend/
+    app/
+      main.py
+      models.py
+      config.py
+      database.py
+      tasks/sequence_search.py
+  frontend/
+    src/App.jsx
+    src/styles.css
+  scripts/
+    import_data.py
+    build_indexes.py
+    verify_release.py
+  docker/postgres/init.sql
+  docs/Resource_Preparation_Checklist.md
+  docker-compose.yml
+  Makefile
+  .env.example
+</code></pre></div>
+<h3 id="3">3. 命令设计<a class="toc-link" href="#3" title="Permanent link">¶</a></h3>
+<table class="">
+<thead>
+<tr>
+<th>命令</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>docker compose up -d</code></td>
+<td>快速启动已有数据库和服务，不触发全量资源扫描。</td>
+</tr>
+<tr>
+<td><code>make import-data</code></td>
+<td>显式从 <code>/dataresource</code> 导入 HABDB 资源到 PostgreSQL。</td>
+</tr>
+<tr>
+<td><code>make reset-db</code></td>
+<td>清空并重建数据库后重新导入。</td>
+</tr>
+<tr>
+<td><code>make bootstrap</code></td>
+<td>新环境一键启动 db/redis、构建后端、导入数据、启动服务。</td>
+</tr>
+<tr>
+<td><code>make build-indexes</code></td>
+<td>检查 DIAMOND、构建/检查 BLASTN 18SrRNA、提示 Kraken2 索引准备。</td>
+</tr>
+<tr>
+<td><code>make verify-release</code></td>
+<td>检查 API、关键文件、manifest 与 18SrRNA 命名。</td>
+</tr>
+</tbody>
+</table>
+<h3 id="4">4. 数据库设计<a class="toc-link" href="#4" title="Permanent link">¶</a></h3>
+<p>v2 中已实现核心表：</p>
+<ul>
+<li><code>species</code></li>
+<li><code>marker_sequence</code></li>
+<li><code>genome</code></li>
+<li><code>gene_family</code></li>
+<li><code>functional_sequence</code></li>
+<li><code>download_file</code></li>
+<li><code>statistic</code></li>
+<li><code>release_manifest</code></li>
+<li><code>search_job</code></li>
+</ul>
+<p>这些表覆盖 NAR 数据库网站需要的主要实体：物种、taxonomy 字段、18SrRNA marker、genome、CDS summary、功能基因、下载文件、统计缓存、发布 manifest 和序列检索任务。</p>
+<h3 id="5">5. 数据导入策略<a class="toc-link" href="#5" title="Permanent link">¶</a></h3>
+<p>导入脚本为：</p>
+<div class="code-block-wrapper"><div class="code-block-header"><span class="mac-dot red"></span><span class="mac-dot yellow"></span><span class="mac-dot green"></span><span class="file-label">code</span></div><pre><code class="language-text">scripts/import_data.py
+</code></pre></div>
+<p>导入原则：</p>
+<ul>
+<li>不复制 v1 的 33GB <code>dataresource</code>；</li>
+<li>通过 Docker volume 将 <code>../HABDB-Web/dataresource</code> 只读挂载为 <code>/dataresource</code>；</li>
+<li>用 <code>--reset</code> 显式清空重建；</li>
+<li>默认检测已有数据，避免重复导入；</li>
+<li>使用 stable HABDB IDs；</li>
+<li>计算下载文件 checksum；</li>
+<li>生成 statistics cache；</li>
+<li>生成 release manifest；</li>
+<li>将 <code>Toxic</code> 归一为 <code>toxic</code>、<code>harmful non-toxic</code>、<code>unknown</code>；</li>
+<li>用户可见 marker label 统一为 <code>18SrRNA</code>。</li>
+</ul>
+<h3 id="6">6. 序列检索实现状态<a class="toc-link" href="#6" title="Permanent link">¶</a></h3>
+<table class="">
+<thead>
+<tr>
+<th>模块</th>
+<th>当前状态</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DIAMOND functional gene search</td>
+<td>已真实接入 worker，使用 <code>/dataresource/HABs_Func_db.dmnd</code>。</td>
+</tr>
+<tr>
+<td>BLASTN 18SrRNA search</td>
+<td>API、job、worker 流程已实现；索引路径为 <code>/indexes/18SrRNA/habdb_18SrRNA</code>。</td>
+</tr>
+<tr>
+<td>Kraken2 18SrRNA classification</td>
+<td>API、job、worker 流程已实现；索引路径为 <code>/indexes/kraken2_18SrRNA</code>。</td>
+</tr>
+</tbody>
+</table>
+<p>DIAMOND 是第一优先真实运行路径。BLASTN 与 Kraken2 当前不使用假数据；若索引缺失，job 会返回 <code>waiting_for_index</code>，并提示具体缺失路径。</p>
+<h3 id="7-18srrna">7. 18SrRNA 命名统一策略<a class="toc-link" href="#7-18srrna" title="Permanent link">¶</a></h3>
+<p>v2 中，面向用户和未来报告统一使用 <code>18SrRNA</code>：</p>
+<ul>
+<li>前端标题、统计卡、Graphical Abstract、搜索框、Tools 模块使用 <code>18SrRNA</code>；</li>
+<li>API summary 返回 <code>marker_label = 18SrRNA</code>；</li>
+<li>数据库字段命名采用 <code>representative_18srrna</code>、<code>extended_18srrna_count</code>；</li>
+<li>文档与清单使用 <code>18SrRNA</code>。</li>
+</ul>
+<p>保留原始资源文件名中的历史 <code>18S</code> 字符串，例如 <code>HABs_18S_sequences.fasta</code>，因为这是既有文件路径，不应为了展示命名而破坏资源引用。</p>
+<h3 id="8">8. 验证状态<a class="toc-link" href="#8" title="Permanent link">¶</a></h3>
+<p>已完成静态验证：</p>
+<ul>
+<li>Python 文件语法检查通过；</li>
+<li>v2 工程目录与核心文件已生成；</li>
+<li>前端文件已生成；</li>
+<li>用户可见文档和 UI 采用 <code>18SrRNA</code> 命名；</li>
+<li>Docker Compose、Makefile、Resource Checklist 已生成。</li>
+</ul>
+<p>未在当前会话中实际执行 Docker build，因为该步骤可能需要联网拉取镜像与 apt/npm 依赖。正式验证建议在可联网 Docker 环境中执行：</p>
+<div class="code-block-wrapper"><div class="code-block-header"><span class="mac-dot red"></span><span class="mac-dot yellow"></span><span class="mac-dot green"></span><span class="file-label">code</span></div><pre><code class="language-powershell">cd "I:\论文\赤潮\文章\数据库文章\openclaw\codex\NAR\WebSite\HABDB-Web-v2"
+copy .env.example .env
+make bootstrap
+make verify-release
+</code></pre></div>
+<h3 id="9">9. 下一步建议<a class="toc-link" href="#9" title="Permanent link">¶</a></h3>
+<ol>
+<li>在 Docker 环境中执行 <code>make bootstrap</code>。</li>
+<li>若 DIAMOND 容器包安装失败，改为固定使用包含 DIAMOND/BLAST/Kraken2 的 bioinformatics base image。</li>
+<li>对 <code>gene_family</code> 进一步建立人工词表，避免 accession-like 名称过细。</li>
+<li>增加 Alembic migration，替代当前 <code>metadata.create_all</code>。</li>
+<li>增加正式 Citation、Help、Version、Contact 页面。</li>
+<li>在公网部署前增加 HTTPS、Nginx、大文件下载代理、备份和监控。</li>
+</ol></body></html>
+
+</div><!-- .page -->
+
+<a href="#" class="back-to-top" title="回到顶部">↑</a>
+</body>
+</html>

@@ -1,0 +1,84 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: habdb
+      POSTGRES_USER: habdb
+      POSTGRES_PASSWORD: habdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - habdb_pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U habdb -d habdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - habdb_redis:/data
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://habdb:habdb@db:5432/habdb
+      REDIS_URL: redis://redis:6379/0
+      HABDB_DATARESOURCE: /dataresource
+      HABDB_JOB_DIR: /app/data/jobs
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/data:/app/data
+      - ../HABDB-Web/dataresource:/dataresource:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: rq worker habdb-jobs --url redis://redis:6379/0
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://habdb:habdb@db:5432/habdb
+      REDIS_URL: redis://redis:6379/0
+      HABDB_DATARESOURCE: /dataresource
+      HABDB_JOB_DIR: /app/data/jobs
+      DIAMOND_DB: /dataresource/HABs_Func_db.dmnd
+      BLAST_18SRRNA_DB: /indexes/18SrRNA/habdb_18SrRNA
+      KRAKEN2_DB: /indexes/kraken2_18SrRNA
+    volumes:
+      - ./backend/data:/app/data
+      - ../HABDB-Web/dataresource:/dataresource:ro
+      - ./indexes:/indexes
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  frontend:
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+    environment:
+      VITE_API_BASE: http://localhost:8000
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  habdb_pgdata:
+  habdb_redis:
