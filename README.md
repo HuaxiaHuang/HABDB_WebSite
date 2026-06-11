@@ -76,6 +76,8 @@ This avoids committing large resources such as:
 
 If your resource directory is elsewhere, update the volume path in `docker-compose.yml` and `HABDB_DATARESOURCE` in `.env`.
 
+This repository also includes an empty `dataresource/` placeholder. For standalone deployment, you may copy the real HABDB resource files into that directory and change the Docker Compose volume from `../HABDB-Web/dataresource:/dataresource:ro` to `./dataresource:/dataresource:ro`.
+
 ---
 
 ## 3. Requirements

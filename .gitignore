@@ -29,7 +29,9 @@ backend/data/release_manifest.json
 indexes/
 
 # Large/raw HABDB resources should not be committed
-dataresource/
+dataresource/*
+!dataresource/.gitkeep
+!dataresource/README.md
 ../HABDB-Web/dataresource/
 *.dmnd
 *.tar.gz
